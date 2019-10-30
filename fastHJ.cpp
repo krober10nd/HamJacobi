@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <stdio.h>
+#include <algorithm>
 #include <vector> 
 #include <array>
 #include <math.h>
@@ -35,7 +36,7 @@ std::vector<int> findIndices(const std::vector<int>& A, const int value) {
 	return B; 
 }
 // solve the Hamilton-Jacobi equation
-std::vector<double> limgrad(const std::vector<int>& dims, const double elen, const std::vector<double> &ffun, const double dfdx, const int imax)  {
+std::vector<double> limgrad(const std::vector<int>& dims, const double elen, std::vector<double> &ffun, const double dfdx, const int imax)  {
  
 	    int ny = dims[0]; int nx = dims[1]; int nz = dims[2];
 
@@ -73,7 +74,7 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double elen, con
               //----- handle boundary vertex adjs.
               //----- iterator that stores the position of last element 
               std :: vector <int>::iterator pend; 
-              pend = std::remove_if (npos.begin(),npos.end(), IsOdd);  
+              pend = std::remove_if(npos.begin()+1,npos.end(), IsOdd);  
 
               for(std::vector<int>::iterator p=npos.begin(); p != pend; ++p){
 
@@ -83,7 +84,7 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double elen, con
                  //----------------- calc. limits about min.-value
                  if (ffun[nod1] > ffun[nod2]) {
 
-                     fun1 = ffun[nod2] + elen * dfdx ;
+                     double fun1 = ffun[nod2] + elen * dfdx ;
 
                      if (ffun[nod1] > fun1+ftol) {
                          ffun[nod1] = fun1;
@@ -92,7 +93,7 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double elen, con
                  
                  } else {
 
-                     fun2 = ffun[nod1] + elen * dfdx ;
+                     double fun2 = ffun[nod1] + elen * dfdx ;
 
                      if (ffun[nod2] > fun2+ftol) {
                          ffun[nod2] = fun2;
