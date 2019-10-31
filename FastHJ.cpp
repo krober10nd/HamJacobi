@@ -2,7 +2,6 @@
    Persson, PO. Engineering with Computers (2006) 22: 95. https://doi.org/10.1007/s00366-006-0014-1 
    kjr, usp, 2019
 */
-#include "fastHJ.h"
 
 #include <iostream>
 #include <stdio.h>
@@ -30,8 +29,9 @@ std::vector<int> findIndices(const std::vector<int>& A, const int value) {
 	}
 	return B; 
 }
+
 // solve the Hamilton-Jacobi equation
-std::vector<double> limgrad(const std::vector<int>& dims, const double elen, std::vector<double> &ffun, const double dfdx, const int imax)  {
+std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, const double& dfdx, const int& imax, const std::vector<double> &ffun)  {
  
         int nrows = dims[0]; int ncols = dims[1]; int nz = dims[2];
 
@@ -44,13 +44,21 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double elen, std
         std::array<int,5> npos;
         npos.fill(0); 
 
+	// allocate output 
+	std::vector<double> ffun_s; 
+	ffun_s.resize(ffun.size()); 
+	ffun_s = ffun; 
+
         for(int iter=0; iter < imax; iter++) {
 
            //------------------------- find "active" nodes this pass
            auto aidx = findIndices( aset, iter-1);
 
            //------------------------- convergence
-	       if(aidx.empty()) break; 
+	   if(aidx.empty()) {
+             std::cout << "INFO: Converged in " << iter << " iterations." << std::endl; 
+             break; 
+	   }
 
            for(std::size_t i=0; i < aidx.size(); i++) {
 
@@ -76,63 +84,38 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double elen, std
                  int nod2 = *p; 
 
                  //----------------- calc. limits about min.-value
-                 if (ffun[nod1] > ffun[nod2]) {
+                 if (ffun_s[nod1] > ffun_s[nod2]) {
 
-                     double fun1 = ffun[nod2] + elen * dfdx ;
+                     double fun1 = ffun_s[nod2] + elen * dfdx ;
 
-                     if (ffun[nod1] > fun1+ftol) {
-                         ffun[nod1] = fun1;
+                     if (ffun_s[nod1] > fun1+ftol) {
+                         ffun_s[nod1] = fun1;
                          aset[nod1] = iter;
                      }
                  
                  } else {
 
-                     double fun2 = ffun[nod1] + elen * dfdx ;
+                     double fun2 = ffun_s[nod1] + elen * dfdx ;
 
-                     if (ffun[nod2] > fun2+ftol) {
-                         ffun[nod2] = fun2;
+                     if (ffun_s[nod2] > fun2+ftol) {
+                         ffun_s[nod2] = fun2;
                          aset[nod2] = iter;
                      }
                  }
               }
 	       }
-           std::cout << iter << std::endl;
 	}
-	return ffun; 
+	return ffun_s; 
 }
 
+// mex it up
+// first args are inputs, last arg is output 
+void mex_function(const std::vector<int>& dims, const double& elen, const double& dfdx, const int& imax, const std::vector<double>& ffun, std::vector<double>& ffun_s) {
 
-//
-int main() {
+    // this is how you call the function from matlab 
+    ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
 
-    std::vector<int> dims = {13601,2801,1};
-    double elen = 1.25;
-    double dfdx=0.15;
-
-    std::vector<double> ffun;
-
-    std::ifstream meshSizes;
-    meshSizes.open("/home/keith/HamJacobi/meshsize.txt");
-    double d;
-    while (meshSizes >> d) //ifstream does text->double conversion
-       ffun.push_back(d); // add to vector
-    meshSizes.close();
-
-    int imax=std::sqrt(ffun.size());
-     
-    auto begin = std::chrono::steady_clock::now();
-
-    std::vector<double> ffun_s  = limgrad( dims, elen, ffun, dfdx, imax);
-
-    auto end = std::chrono::steady_clock::now();
-
-    std::cout << "Method took " << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() << " microseconds\n";
-
-    std::ofstream myfile;
-    myfile.open ("meshsize_smoothed.txt");
-    for(std::size_t i=0; i<ffun_s.size(); i++)
-        myfile << ffun_s[i] << std::endl; 
-    myfile.close();
-
-    return 0; 
 }
+
+#include "mex-it.h"
+
