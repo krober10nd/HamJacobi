@@ -17,7 +17,7 @@ LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 matlab
 Operate this code from MATLAB by changing the appropriate parts of the code below.
 
 ```
-dims = [ny nx nz]; 
+dims = [ncols nrows nz]; 
 elen = % size of grid cell 
 dfdx = % decimal fraction representing smoothness
 itmax = % maximum number of iterations to perform 
