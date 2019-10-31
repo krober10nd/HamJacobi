@@ -4,9 +4,13 @@ Solves a Hamilton-Jacobi PDE to gradient limit a scalar field defined in 2 or 3D
 
 ## Compile
 
-This code is designed to be mex'ed using https://github.com/audiofilter/mex-it. From MATLAB enter the following command. 
+This code is designed to be mex'ed using https://github.com/audiofilter/mex-it. From MATLAB enter the following command: 
 
 mex CXXFLAGS="\$CXXFLAGS -std=c++11" FastHJ.cpp
+
+Note: you may have to start MATLAB from the terminal like so:
+
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 matlab
 
 ## Usage 
 
