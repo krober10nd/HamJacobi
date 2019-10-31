@@ -18,7 +18,8 @@ elen = % size of grid cell
 dfdx = % decimal fraction representing smoothness
 itmax = % maximum number of iterations to perform 
 field = 2D array reshaped in column-major order 
-smoothed_field = FastHJ( int32(dims), elen, dfdx, int32(400), field);
+
+smoothed_field = FastHJ( int32(dims), elen, dfdx, int32(itmax), field);
 ```
 
 
