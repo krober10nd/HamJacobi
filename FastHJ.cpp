@@ -64,6 +64,9 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
 
               //----- map doubly index to singly indexed 
               int inod = aidx[i];
+	      //idx = rows + (cols-1)*size(M,1);
+	      //r = rem(idx-1,nrows)+1;
+              //c = (idx-r)/nrows + 1;
               int ipos = std::floor((inod-1)/ncols);
               int jpos = inod - ipos*ncols;
     
@@ -71,7 +74,7 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
               npos[0] = inod; 
               npos[1] = (ipos+1)*ncols + jpos;//
               npos[2] = (ipos-1)*ncols + jpos;//nnod of left adj
-              npos[3] = ipos*ncols + std::min(jpos+1,nrows);//nnod of above adj
+              npos[3] = ipos*ncols + std::min(jpos+1,nrows-1);//nnod of above adj
               npos[4] = ipos*ncols + std::max(jpos-1,0);//nnod of below adj
 
               //----- handle boundary vertex adjs.
