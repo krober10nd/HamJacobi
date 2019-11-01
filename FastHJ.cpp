@@ -55,27 +55,30 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
            auto aidx = findIndices( aset, iter-1);
 
            //------------------------- convergence
-	   if(aidx.empty()) {
-             std::cout << "INFO: Converged in " << iter << " iterations." << std::endl; 
-             break; 
-	   }
+	       if(aidx.empty()) {
+                 std::cout << "INFO: Converged in " << iter << " iterations." << std::endl; 
+                 break; 
+	       }
 
            for(std::size_t i=0; i < aidx.size(); i++) {
 
-              //----- map doubly index to singly indexed 
-              int inod = aidx[i];
-	      //idx = rows + (cols-1)*size(M,1);
-	      //r = rem(idx-1,nrows)+1;
-              //c = (idx-r)/nrows + 1;
-              int ipos = std::floor((inod-1)/ncols);
-              int jpos = inod - ipos*ncols;
-    
+              //----- map double index to singly indexed 
+              int inod = aidx[i]+1;//add one to match 1-based indexing
+              int ipos = 1+std::floor((inod-1)/nrows);
+              int jpos = inod - (ipos-1)*nrows;
+
 	          // ---- gather indices using 4 edge stencil 
               npos[0] = inod; 
-              npos[1] = (ipos+1)*ncols + jpos;//
-              npos[2] = (ipos-1)*ncols + jpos;//nnod of left adj
-              npos[3] = ipos*ncols + std::min(jpos+1,nrows-1);//nnod of above adj
-              npos[4] = ipos*ncols + std::max(jpos-1,0);//nnod of below adj
+              npos[1] = (ipos-1)*nrows + jpos;//nnod of right adj
+              npos[2] = (ipos-2)*nrows + jpos;//nnod of left adj
+              npos[3] = (ipos-1)*nrows + std::min(jpos+1,nrows);//nnod of above adj
+              npos[4] = (ipos-1)*nrows + std::max(jpos-1,1);//nnod of below adj
+
+              // subtract one here to reflect zero-based indexing
+              npos[1] --;
+              npos[2] --;
+              npos[3] --;
+              npos[4] --;
 
               //----- handle boundary vertex adjs.
               //----- iterator that stores the position of last element 
