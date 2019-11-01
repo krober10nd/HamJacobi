@@ -8,9 +8,11 @@ This code is designed to be mex'ed using https://github.com/audiofilter/mex-it. 
 
 mex CXXFLAGS="\$CXXFLAGS -std=c++11" FastHJ.cpp
 
-Note: you may have to start MATLAB from the terminal like so:
+Note: you MAY have to start MATLAB from the terminal (on Linux-like OS) like so:
 
 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 matlab
+
+...but first try to just use MATLAB without that.
 
 ## Usage 
 
