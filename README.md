@@ -25,5 +25,17 @@ field = 2D array reshaped in column-major order
 
 smoothed_field = FastHJ( int32(dims), elen, dfdx, int32(itmax), field);
 ```
+Column-major in MATLAB is readily achieved by using the reshape command like so: 
 
+```
+[nrows,ncols]=size(matrix);
+vec = reshape(matrix,[numel(matrix),1]); 
+```
+
+...and back to the original matrix format like: 
+
+```
+
+matrix = reshape(vec,[nrows,ncols]); 
+```
 
