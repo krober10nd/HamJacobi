@@ -33,16 +33,17 @@ std::vector<int> findIndices(const std::vector<int>& A, const int value) {
 // solve the Hamilton-Jacobi equation
 std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, const double& dfdx, const int& imax, const std::vector<double> &ffun)  {
  
-        int nrows = dims[0]; int ncols = dims[1]; int nz = dims[2];
-
-        std::vector<int> aset(nrows*ncols*nz,-1);
+        std::vector<int> aset(dims[0]*dims[1]*dims[2],-1);
 
         double ftol = *(std::min_element(ffun.begin(), ffun.end()))*std::sqrt(EPS);
 
-        std::array<int,5> rm;
-        rm.fill(0); 
-        std::array<int,5> npos;
+        std::array<int,7> npos;
         npos.fill(0); 
+
+	std::array<int,3> k; 
+        k[0] = 1;
+        k[1] = dims[0]; 
+        k[2] = dims[0]*dims[1]; 
 
 	// allocate output 
 	std::vector<double> ffun_s; 
@@ -55,30 +56,50 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
            auto aidx = findIndices( aset, iter-1);
 
            //------------------------- convergence
-	       if(aidx.empty()) {
-                 std::cout << "INFO: Converged in " << iter << " iterations." << std::endl; 
-                 break; 
-	       }
+	   if(aidx.empty()) {
+             std::cout << "INFO: Converged in " << iter << " iterations." << std::endl; 
+             break; 
+	   }
 
            for(std::size_t i=0; i < aidx.size(); i++) {
 
-              //----- map double index to singly indexed 
+              //----- map triply indexed to singly indexed 
               int inod = aidx[i]+1;//add one to match 1-based indexing
-              int ipos = 1+std::floor((inod-1)/nrows);
-              int jpos = inod - (ipos-1)*nrows;
 
-	          // ---- gather indices using 4 edge stencil 
+              int ndx = inod; 
+              int vi = std::mod(ndx-1, k[2]) + 1;
+              int vj = (ndx - vi)/k[2] + 1;
+              ndx = vi;
+              int kpos = vj; 
+              
+              vi = std::mod(ndx-1, k[1]) + 1;
+              vj = (ndx - vi)/k[1] + 1;
+              ndx = vi;
+              int jpos = vj; 
+              
+              vi = std:mmod(ndx-1, k[0]) + 1;
+              vj = (ndx - vi)/k[0] + 1;
+              ndx = vi;
+              int ipos = vj; 
+
+	      // ---- gather indices using 4 (6 in 3d) edge stencil 
+	      // k[3] is the product of the first two dimensions 
               npos[0] = inod; 
-              npos[1] = (ipos-1)*nrows + jpos;//nnod of right adj
-              npos[2] = (ipos-2)*nrows + jpos;//nnod of left adj
-              npos[3] = (ipos-1)*nrows + std::min(jpos+1,nrows);//nnod of above adj
-              npos[4] = (ipos-1)*nrows + std::max(jpos-1,1);//nnod of below adj
-
+              npos[1] = std::min(jpos,dims[0])*dims[1]   + ipos                     + (kpos-1)*k[3];//nnod of right adj
+              npos[2] = std::max(jpos-2,dims[0])*dims[1] + ipos                     + (kpos-1)*k[3];//nnod of left adj
+              npos[3] = (jpos-1)*dims[1]                 + std::min(ipos+1,dims[1]) + (kpos-1)*k[3];//nnod of above in x-y adj
+              npos[4] = (jpos-1)*dims[1]                 + std::max(ipos-1,1)       + (kpos-1)*k[3];//nnod of below in x-y adj
+              npos[5] = (jpos-1)*dims[1]                 + ipos                     + std::max(kpos-2,1)*k[3];// below point (in 3d) 
+              npos[6] = (jpos-1)*dims[1]                 + ipos                     + std::min(kpos,dims[2])*k[3];// above point (in 3d)
+	      
               // subtract one here to reflect zero-based indexing
+	      npos[0] --; 
               npos[1] --;
               npos[2] --;
               npos[3] --;
               npos[4] --;
+              npos[5] --;
+              npos[6] --;
 
               //----- handle boundary vertex adjs.
               //----- iterator that stores the position of last element 
