@@ -32,13 +32,15 @@ std::vector<int> findIndices(const std::vector<int>& A, const int value) {
 
 // solve the Hamilton-Jacobi equation
 std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, const double& dfdx, const int& imax, const std::vector<double> &ffun)  {
+
+    assert(dims[0] > 0 && dims[1] > 0 && dims[2] > 0);
  
-        std::vector<int> aset(dims[0]*dims[1]*dims[2],-1);
+    std::vector<int> aset(dims[0]*dims[1]*dims[2],-1);
 
-        double ftol = *(std::min_element(ffun.begin(), ffun.end()))*std::sqrt(EPS);
+    double ftol = *(std::min_element(ffun.begin(), ffun.end()))*std::sqrt(EPS);
 
-        std::array<int,7> npos;
-        npos.fill(0); 
+    std::array<int,7> npos;
+    npos.fill(0); 
 
 	std::array<int,3> k; 
         k[0] = 1;
@@ -56,10 +58,10 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
            auto aidx = findIndices( aset, iter-1);
 
            //------------------------- convergence
-	   if(aidx.empty()) {
+	       if(aidx.empty()) {
              std::cout << "INFO: Converged in " << iter << " iterations." << std::endl; 
              break; 
-	   }
+	       }
 
            for(std::size_t i=0; i < aidx.size(); i++) {
 
@@ -67,33 +69,33 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
               int inod = aidx[i]+1;//add one to match 1-based indexing
 
               int ndx = inod; 
-              int vi = std::mod(ndx-1, k[2]) + 1;
+              int vi = (ndx-1)%k[2] + 1; //std::mod(ndx-1, k[2]) + 1;
               int vj = (ndx - vi)/k[2] + 1;
               ndx = vi;
               int kpos = vj; 
               
-              vi = std::mod(ndx-1, k[1]) + 1;
+              vi = (ndx-1)%k[1] + 1; //std::mod(ndx-1, k[1]) + 1;
               vj = (ndx - vi)/k[1] + 1;
               ndx = vi;
               int jpos = vj; 
               
-              vi = std:mmod(ndx-1, k[0]) + 1;
+              vi = (ndx-1)%k[0] + 1; //std:mod(ndx-1, k[0]) + 1;
               vj = (ndx - vi)/k[0] + 1;
               ndx = vi;
               int ipos = vj; 
 
-	      // ---- gather indices using 4 (6 in 3d) edge stencil 
-	      // k[3] is the product of the first two dimensions 
+	          // ---- gather indices using 4 (6 in 3d) edge stencil 
+	          // k[3] is the product of the first two dimensions 
               npos[0] = inod; 
               npos[1] = std::min(jpos,dims[0])*dims[1]   + ipos                     + (kpos-1)*k[3];//nnod of right adj
               npos[2] = std::max(jpos-2,dims[0])*dims[1] + ipos                     + (kpos-1)*k[3];//nnod of left adj
               npos[3] = (jpos-1)*dims[1]                 + std::min(ipos+1,dims[1]) + (kpos-1)*k[3];//nnod of above in x-y adj
               npos[4] = (jpos-1)*dims[1]                 + std::max(ipos-1,1)       + (kpos-1)*k[3];//nnod of below in x-y adj
-              npos[5] = (jpos-1)*dims[1]                 + ipos                     + std::max(kpos-2,1)*k[3];// below point (in 3d) 
-              npos[6] = (jpos-1)*dims[1]                 + ipos                     + std::min(kpos,dims[2])*k[3];// above point (in 3d)
+              npos[5] = (jpos-1)*dims[1]                 + ipos                     + std::min(kpos,dims[2])*k[3];// above point (in 3d)
+              npos[6] = (jpos-1)*dims[1]                 + ipos                     + std::max(kpos-2,1)*k[3];// below point (in 3d) 
 	      
               // subtract one here to reflect zero-based indexing
-	      npos[0] --; 
+	          npos[0] --; 
               npos[1] --;
               npos[2] --;
               npos[3] --;
@@ -135,14 +137,40 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
 	return ffun_s; 
 }
 
-// mex it up
-// first args are inputs, last arg is output 
-void mex_function(const std::vector<int>& dims, const double& elen, const double& dfdx, const int& imax, const std::vector<double>& ffun, std::vector<double>& ffun_s) {
 
-    // this is how you call the function from matlab 
-    ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
+//
+int main() {
 
+    std::vector<int> dims = {21,21,21};
+    double elen = 0.10;
+    double dfdx=0.15;
+
+    std::vector<double> ffun;
+
+    std::ifstream meshSizes;
+    meshSizes.open("/home/keith/HamJacobi/meshsize.txt");
+    double d;
+    while (meshSizes >> d) //ifstream does text->double conversion
+       ffun.push_back(d); // add to vector
+    meshSizes.close();
+    std::cout << "read it in" << std::endl; 
+
+    int imax=std::sqrt(ffun.size());
+
+    auto begin = std::chrono::steady_clock::now();
+
+    std::vector<double> ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
+
+    auto end = std::chrono::steady_clock::now();
+
+    std::cout << "Method took " << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() << " microseconds\n";
+
+    std::ofstream myfile;
+    myfile.open ("meshsize_smoothed.txt");
+    for(std::size_t i=0; i<ffun_s.size(); i++)
+        myfile << ffun_s[i] << std::endl;
+    myfile.close();
+
+    return 0;
 }
-
-#include "mex-it.h"
 
