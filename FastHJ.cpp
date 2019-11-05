@@ -11,6 +11,7 @@
 #include <math.h>
 #include <cmath>
 #include <fstream>
+#include <assert.h>
 
 #include <chrono>
 
@@ -43,9 +44,9 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
     npos.fill(0); 
 
 	std::array<int,3> k; 
-        k[0] = 1;
-        k[1] = dims[0]; 
-        k[2] = dims[0]*dims[1]; 
+    k[0] = 1;
+    k[1] = dims[0];
+    k[2] = dims[0]*dims[1];
 
 	// allocate output 
 	std::vector<double> ffun_s; 
@@ -73,7 +74,7 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
               int vj = (ndx - vi)/k[2] + 1;
               ndx = vi;
               int kpos = vj; 
-              
+
               vi = (ndx-1)%k[1] + 1; //std::mod(ndx-1, k[1]) + 1;
               vj = (ndx - vi)/k[1] + 1;
               ndx = vi;
@@ -87,12 +88,12 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
 	          // ---- gather indices using 4 (6 in 3d) edge stencil 
 	          // k[3] is the product of the first two dimensions 
               npos[0] = inod; 
-              npos[1] = std::min(jpos,dims[0])*dims[1]   + ipos                     + (kpos-1)*k[3];//nnod of right adj
-              npos[2] = std::max(jpos-2,dims[0])*dims[1] + ipos                     + (kpos-1)*k[3];//nnod of left adj
-              npos[3] = (jpos-1)*dims[1]                 + std::min(ipos+1,dims[1]) + (kpos-1)*k[3];//nnod of above in x-y adj
-              npos[4] = (jpos-1)*dims[1]                 + std::max(ipos-1,1)       + (kpos-1)*k[3];//nnod of below in x-y adj
-              npos[5] = (jpos-1)*dims[1]                 + ipos                     + std::min(kpos,dims[2])*k[3];// above point (in 3d)
-              npos[6] = (jpos-1)*dims[1]                 + ipos                     + std::max(kpos-2,1)*k[3];// below point (in 3d) 
+              npos[1] =  jpos*dims[1]                    + ipos                     + (kpos-1)*k[2];//nnod of right adj
+              npos[2] = (jpos-2)*dims[1]                 + ipos                     + (kpos-1)*k[2];//nnod of left adj
+              npos[3] = (jpos-1)*dims[1]                 + ipos+1                   + (kpos-1)*k[2];//nnod of above in x-y adj
+              npos[4] = (jpos-1)*dims[1]                 + ipos-1                   + (kpos-1)*k[2];//nnod of below in x-y adj
+              npos[5] = (jpos-1)*dims[1]                 + ipos                     +  kpos*k[2];// above point (in 3d)
+              npos[6] = (jpos-1)*dims[1]                 + ipos                     + (kpos-2)*k[2];// below point (in 3d)
 	      
               // subtract one here to reflect zero-based indexing
 	          npos[0] --; 
@@ -107,10 +108,13 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
               //----- iterator that stores the position of last element 
               auto pend = std::remove_if(npos.begin()+1,npos.end(), IsNegative);
 
+              int nod1 = npos[0];
+              std::cout << "begin" << std::endl;
+              std::cout << npos[0] << " " << npos[5] << " " << npos[6] << std::endl;
+
               for(auto p=npos.begin()+1; p!=pend; p++){
 
-                 int nod1 = npos[0];
-                 int nod2 = *p; 
+                 int nod2 = *p;
 
                  //----------------- calc. limits about min.-value
                  if (ffun_s[nod1] > ffun_s[nod2]) {
@@ -132,6 +136,8 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
                      }
                  }
               }
+
+              std::cout << "finish" << std::endl;
 	       }
 	}
 	return ffun_s; 
@@ -166,7 +172,7 @@ int main() {
     std::cout << "Method took " << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() << " microseconds\n";
 
     std::ofstream myfile;
-    myfile.open ("meshsize_smoothed.txt");
+    myfile.open ("/home/keith/HamJacobi/meshsize_smoothed.txt");
     for(std::size_t i=0; i<ffun_s.size(); i++)
         myfile << ffun_s[i] << std::endl;
     myfile.close();
