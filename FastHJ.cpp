@@ -23,7 +23,7 @@ bool IsNegative(int i) {return (i < 0);}
 void enforceBounds(std::array<int,7>& npos, size_t maxsz) {
     for(size_t i=0; i<npos.size(); i++){
         if(npos[i] > maxsz || npos[i] < 1)
-           npos[i] = -1;
+           npos[i] = 0;
     }
 }
 
@@ -77,36 +77,36 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
            for(std::size_t i=0; i < aidx.size(); i++) {
 
               //----- map triply indexed to singly indexed 
-              int inod = aidx[i]+1;//add one to match 1-based indexing
+              int inod = aidx[i]+1;  //add one to match 1-based indexing
 
               int ndx = inod; 
-              int vi = (ndx-1)%k[2] + 1; //std::mod(ndx-1, k[2]) + 1;
+              int vi = (ndx-1)%k[2] + 1;
               int vj = (ndx - vi)/k[2] + 1;
               ndx = vi;
               int kpos = vj; 
 
-              vi = (ndx-1)%k[1] + 1; //std::mod(ndx-1, k[1]) + 1;
+              vi = (ndx-1)%k[1] + 1;
               vj = (ndx - vi)/k[1] + 1;
               ndx = vi;
               int jpos = vj; 
               
-              vi = (ndx-1)%k[0] + 1; //std:mod(ndx-1, k[0]) + 1;
+              vi = (ndx-1)%k[0] + 1;
               vj = (ndx - vi)/k[0] + 1;
               ndx = vi;
               int ipos = vj; 
 
 
               // ---- gather indices using 4 (6 in 3d) edge stencil
-	          // k[3] is the product of the first two dimensions 
+              // k[2] is the product of the first two dimensions
               npos[0] = inod; 
               npos[1] =  jpos*dims[1]                    + ipos                     + (kpos-1)*k[2];//nnod of right adj
-              npos[2] = (jpos-2)*dims[0]                 + ipos                     + (kpos-1)*k[2];//nnod of left adj
+              npos[2] = (jpos-2)*dims[1]                 + ipos                     + (kpos-1)*k[2];//nnod of left adj
               npos[3] = (jpos-1)*dims[1]                 + ipos+1                   + (kpos-1)*k[2];//nnod of above in x-y adj
               npos[4] = (jpos-1)*dims[1]                 + ipos-1                   + (kpos-1)*k[2];//nnod of below in x-y adj
               npos[5] = (jpos-1)*dims[1]                 + ipos                     +  kpos*k[2];// above point (in 3d)
               npos[6] = (jpos-1)*dims[1]                 + ipos                     + (kpos-2)*k[2];// below point (in 3d)
-	      
-              //----- handle boundary vertex adjs (if oob then make -1).
+
+              //----- handle boundary vertex adjs (if oob then make 0).
               enforceBounds(npos,maxSz);
 
               // subtract one here to reflect zero-based indexing
@@ -121,7 +121,7 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
               int nod1 = npos[0];
 
               assert(nod1 < ffun_s.size());
-
+              assert(nod1 > -1 );
               //----- handle boundary vertex adjs.
               //----- iterator that stores the position of last element
               auto pend = std::remove_if(npos.begin()+1,npos.end(), IsNegative);
