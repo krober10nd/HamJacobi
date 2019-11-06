@@ -8,7 +8,7 @@ xp = xg(:); yp = yg(:); zp = zg(:);
 
 figure; scatter3(xp,yp,zp); 
 
-dims = size(xg); 
+dims = size(xg); c
 
 inod = 3000; 
 

@@ -19,6 +19,14 @@
 
 bool IsNegative(int i) {return (i < 0);}
 
+// for 1 based indexing
+void enforceBounds(std::array<int,7>& npos, size_t maxsz) {
+    for(size_t i=0; i<npos.size(); i++){
+        if(npos[i] > maxsz || npos[i] < 1)
+           npos[i] = -1;
+    }
+}
+
 // find indices in linear time where A==value
 std::vector<int> findIndices(const std::vector<int>& A, const int value) {
 	// try calling reserve here with some estimated size amount
@@ -53,6 +61,8 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
 	ffun_s.resize(ffun.size()); 
 	ffun_s = ffun; 
 
+    int maxSz = dims[0]*dims[1]*dims[2];
+
         for(int iter=0; iter < imax; iter++) {
 
            //------------------------- find "active" nodes this pass
@@ -85,18 +95,22 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
               ndx = vi;
               int ipos = vj; 
 
-	          // ---- gather indices using 4 (6 in 3d) edge stencil 
+
+              // ---- gather indices using 4 (6 in 3d) edge stencil
 	          // k[3] is the product of the first two dimensions 
               npos[0] = inod; 
               npos[1] =  jpos*dims[1]                    + ipos                     + (kpos-1)*k[2];//nnod of right adj
-              npos[2] = (jpos-2)*dims[1]                 + ipos                     + (kpos-1)*k[2];//nnod of left adj
+              npos[2] = (jpos-2)*dims[0]                 + ipos                     + (kpos-1)*k[2];//nnod of left adj
               npos[3] = (jpos-1)*dims[1]                 + ipos+1                   + (kpos-1)*k[2];//nnod of above in x-y adj
               npos[4] = (jpos-1)*dims[1]                 + ipos-1                   + (kpos-1)*k[2];//nnod of below in x-y adj
               npos[5] = (jpos-1)*dims[1]                 + ipos                     +  kpos*k[2];// above point (in 3d)
               npos[6] = (jpos-1)*dims[1]                 + ipos                     + (kpos-2)*k[2];// below point (in 3d)
 	      
+              //----- handle boundary vertex adjs (if oob then make -1).
+              enforceBounds(npos,maxSz);
+
               // subtract one here to reflect zero-based indexing
-	          npos[0] --; 
+              npos[0] --;
               npos[1] --;
               npos[2] --;
               npos[3] --;
@@ -104,23 +118,24 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
               npos[5] --;
               npos[6] --;
 
-              //----- handle boundary vertex adjs.
-              //----- iterator that stores the position of last element 
-              auto pend = std::remove_if(npos.begin()+1,npos.end(), IsNegative);
-
               int nod1 = npos[0];
-              std::cout << "begin" << std::endl;
-              std::cout << npos[0] << " " << npos[5] << " " << npos[6] << std::endl;
+
+              assert(nod1 < ffun_s.size());
+
+              //----- handle boundary vertex adjs.
+              //----- iterator that stores the position of last element
+              auto pend = std::remove_if(npos.begin()+1,npos.end(), IsNegative);
 
               for(auto p=npos.begin()+1; p!=pend; p++){
 
                  int nod2 = *p;
+                 assert(nod2 < ffun_s.size());
+                 assert(nod2 > -1);
 
                  //----------------- calc. limits about min.-value
                  if (ffun_s[nod1] > ffun_s[nod2]) {
 
                      double fun1 = ffun_s[nod2] + elen * dfdx ;
-
                      if (ffun_s[nod1] > fun1+ftol) {
                          ffun_s[nod1] = fun1;
                          aset[nod1] = iter;
@@ -129,54 +144,64 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
                  } else {
 
                      double fun2 = ffun_s[nod1] + elen * dfdx ;
-
                      if (ffun_s[nod2] > fun2+ftol) {
                          ffun_s[nod2] = fun2;
                          aset[nod2] = iter;
                      }
                  }
               }
-
-              std::cout << "finish" << std::endl;
-	       }
+          }
+      std::cout << "ITER: " << iter << std::endl;
 	}
 	return ffun_s; 
 }
 
 
-//
-int main() {
+// mex it up
+// first args are inputs, last arg is output
+void mex_function(const std::vector<int>& dims, const double& elen, const double& dfdx, const int& imax, const std::vector<double>& ffun, std::vector<double>& ffun_s) {
 
-    std::vector<int> dims = {21,21,21};
-    double elen = 0.10;
-    double dfdx=0.15;
+    // this is how you call the function from matlab
+    ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
 
-    std::vector<double> ffun;
-
-    std::ifstream meshSizes;
-    meshSizes.open("/home/keith/HamJacobi/meshsize.txt");
-    double d;
-    while (meshSizes >> d) //ifstream does text->double conversion
-       ffun.push_back(d); // add to vector
-    meshSizes.close();
-    std::cout << "read it in" << std::endl; 
-
-    int imax=std::sqrt(ffun.size());
-
-    auto begin = std::chrono::steady_clock::now();
-
-    std::vector<double> ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
-
-    auto end = std::chrono::steady_clock::now();
-
-    std::cout << "Method took " << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() << " microseconds\n";
-
-    std::ofstream myfile;
-    myfile.open ("/home/keith/HamJacobi/meshsize_smoothed.txt");
-    for(std::size_t i=0; i<ffun_s.size(); i++)
-        myfile << ffun_s[i] << std::endl;
-    myfile.close();
-
-    return 0;
 }
+
+#include "mex-it.h"
+
+
+//
+//int main() {
+
+//    std::vector<int> dims = {21,21,21};
+//    double elen = 100;
+//    double dfdx=0.15;
+
+//    std::vector<double> ffun;
+
+//    std::ifstream meshSizes;
+//    meshSizes.open("/home/keith/HamJacobi/meshsize.txt");
+//    double d;
+//    while (meshSizes >> d) //ifstream does text->double conversion
+//       ffun.push_back(d); // add to vector
+//    meshSizes.close();
+//    std::cout << "read it in" << std::endl;
+
+//    int imax=std::sqrt(ffun.size());
+
+//    auto begin = std::chrono::steady_clock::now();
+
+//    std::vector<double> ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
+
+//    auto end = std::chrono::steady_clock::now();
+
+//    std::cout << "Method took " << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() << " microseconds\n";
+
+//    std::ofstream myfile;
+//    myfile.open ("/home/keith/HamJacobi/meshsize_smoothed.txt");
+//    for(std::size_t i=0; i<ffun_s.size(); i++)
+//        myfile << ffun_s[i] << std::endl;
+//    myfile.close();
+
+//    return 0;
+//}
 
