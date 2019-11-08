@@ -17,19 +17,25 @@
 
 #define EPS 1e-9
 
-bool IsNegative(int i) {return (i < 0);}
-
-// for 1 based indexing
-void enforceBounds(std::array<int,7>& npos, size_t maxsz) {
-    for(size_t i=0; i<npos.size(); i++){
-        if(npos[i] > maxsz || npos[i] < 1)
-           npos[i] = 0;
-    }
+// for column major order with 1-based indexing
+int sub2ind(const int row, const int col, const int zpos, const int nrows, const int ncols){
+  return (col-1)*nrows + row + (zpos-1)*(nrows*ncols) - 1; // trailing -1 is for zero-based indexing
 }
+
+void ind2sub(const int index,const int nrows,const int ncols,int *i,int *j, int *k)
+{
+ int tmp=index;
+ *k=std::ceil(tmp/(nrows*ncols)); 
+ tmp=tmp-(*k-1)*nrows*ncols; 
+ *j = 1 + std::floor((index-1)/nrows); 
+ *i = tmp - (*j-1)*nrows; 
+}
+
+
+bool IsNegative(int i) {return (i < 0);}
 
 // find indices in linear time where A==value
 std::vector<int> findIndices(const std::vector<int>& A, const int value) {
-	// try calling reserve here with some estimated size amount
 	std::vector<int> B; 
 	for(std::size_t i=0; i<A.size(); i++) {
 	   if(A[i] == value) {
@@ -50,11 +56,6 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
 
     std::array<int,7> npos;
     npos.fill(0); 
-
-	std::array<int,3> k; 
-    k[0] = 1;
-    k[1] = dims[0];
-    k[2] = dims[0]*dims[1];
 
 	// allocate output 
 	std::vector<double> ffun_s; 
@@ -79,56 +80,26 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
               //----- map triply indexed to singly indexed 
               int inod = aidx[i]+1;  //add one to match 1-based indexing
 
-              int ndx = inod; 
-              int vi = (ndx-1)%k[2] + 1;
-              int vj = (ndx - vi)/k[2] + 1;
-              ndx = vi;
-              int kpos = vj; 
+              //----- calculate the i,j,k position 
+              int ipos,jpos,kpos; 
+              ind2sub(inod,dims[0],dims[1],&ipos,&jpos,&kpos);
 
-              vi = (ndx-1)%k[1] + 1;
-              vj = (ndx - vi)/k[1] + 1;
-              ndx = vi;
-              int jpos = vj; 
-              
-              vi = (ndx-1)%k[0] + 1;
-              vj = (ndx - vi)/k[0] + 1;
-              ndx = vi;
-              int ipos = vj; 
-
-
-              // ---- gather indices using 4 (6 in 3d) edge stencil
-              // k[2] is the product of the first two dimensions
+              // ---- gather indices using 4 (6 in 3d) edge stencil centered on inod
               npos[0] = inod; 
-              npos[1] =  jpos*dims[1]                    + ipos                     + (kpos-1)*k[2];//nnod of right adj
-              npos[2] = (jpos-2)*dims[1]                 + ipos                     + (kpos-1)*k[2];//nnod of left adj
-              npos[3] = (jpos-1)*dims[1]                 + ipos+1                   + (kpos-1)*k[2];//nnod of above in x-y adj
-              npos[4] = (jpos-1)*dims[1]                 + ipos-1                   + (kpos-1)*k[2];//nnod of below in x-y adj
-              npos[5] = (jpos-1)*dims[1]                 + ipos                     +  kpos*k[2];// above point (in 3d)
-              npos[6] = (jpos-1)*dims[1]                 + ipos                     + (kpos-2)*k[2];// below point (in 3d)
-
-              //----- handle boundary vertex adjs (if oob then make 0).
-              enforceBounds(npos,maxSz);
-
-              // subtract one here to reflect zero-based indexing
-              npos[0] --;
-              npos[1] --;
-              npos[2] --;
-              npos[3] --;
-              npos[4] --;
-              npos[5] --;
-              npos[6] --;
+              npos[1] = sub2ind(ipos,std::max(jpos-1,1),kpos,dims[0],dims[1]); 
+              npos[2] = sub2ind(ipos,std::min(jpos+1,dims[1]),kpos,dims[0],dims[1]); 
+              npos[3] = sub2ind(std::max(ipos-1,1),jpos,kpos,dims[0],dims[1]); 
+              npos[4] = sub2ind(std::min(ipos+1,dims[0]),jpos,kpos,dims[0],dims[1]); 
+              npos[5] = sub2ind(ipos,jpos,std::min(kpos-1,1),dims[0],dims[1]); 
+              npos[6] = sub2ind(ipos,jpos,std::max(kpos+1,dims[2]),dims[0],dims[1]); 
 
               int nod1 = npos[0];
-
               assert(nod1 < ffun_s.size());
               assert(nod1 > -1 );
-              //----- handle boundary vertex adjs.
-              //----- iterator that stores the position of last element
-              auto pend = std::remove_if(npos.begin()+1,npos.end(), IsNegative);
+              
+              for(std::size_t p=2; p<7; p++){
 
-              for(auto p=npos.begin()+1; p!=pend; p++){
-
-                 int nod2 = *p;
+                 int nod2 = npos[p];
                  assert(nod2 < ffun_s.size());
                  assert(nod2 > -1);
 
@@ -157,51 +128,51 @@ std::vector<double> limgrad(const std::vector<int>& dims, const double& elen, co
 }
 
 
-// mex it up
-// first args are inputs, last arg is output
-void mex_function(const std::vector<int>& dims, const double& elen, const double& dfdx, const int& imax, const std::vector<double>& ffun, std::vector<double>& ffun_s) {
-
-    // this is how you call the function from matlab
-    ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
-
-}
-
-#include "mex-it.h"
+//// mex it up for usage in matlab 
+//// first args are inputs, last arg is output
+//void mex_function(const std::vector<int>& dims, const double& elen, const double& dfdx, const int& imax, const std::vector<double>& ffun, std::vector<double>& ffun_s) {
+//
+//    // this is how you call the function from matlab
+//    ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
+//
+//}
+//
+//#include "mex-it.h"
 
 
 //
-//int main() {
+int main() {
 
-//    std::vector<int> dims = {21,21,21};
-//    double elen = 100;
-//    double dfdx=0.15;
+    std::vector<int> dims = {21,21,21};
+    double elen = 100;
+    double dfdx=0.15;
 
-//    std::vector<double> ffun;
+    std::vector<double> ffun;
 
-//    std::ifstream meshSizes;
-//    meshSizes.open("/home/keith/HamJacobi/meshsize.txt");
-//    double d;
-//    while (meshSizes >> d) //ifstream does text->double conversion
-//       ffun.push_back(d); // add to vector
-//    meshSizes.close();
-//    std::cout << "read it in" << std::endl;
+    std::ifstream meshSizes;
+    meshSizes.open("/home/keith/HamJacobi/meshsize.txt");
+    double d;
+    while (meshSizes >> d) //ifstream does text->double conversion
+       ffun.push_back(d); // add to vector
+    meshSizes.close();
+    std::cout << "read it in" << std::endl;
 
-//    int imax=std::sqrt(ffun.size());
+    int imax=std::sqrt(ffun.size());
 
-//    auto begin = std::chrono::steady_clock::now();
+    auto begin = std::chrono::steady_clock::now();
 
-//    std::vector<double> ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
+    std::vector<double> ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
 
-//    auto end = std::chrono::steady_clock::now();
+    auto end = std::chrono::steady_clock::now();
 
-//    std::cout << "Method took " << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() << " microseconds\n";
+    std::cout << "Method took " << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() << " microseconds\n";
 
-//    std::ofstream myfile;
-//    myfile.open ("/home/keith/HamJacobi/meshsize_smoothed.txt");
-//    for(std::size_t i=0; i<ffun_s.size(); i++)
-//        myfile << ffun_s[i] << std::endl;
-//    myfile.close();
+    std::ofstream myfile;
+    myfile.open ("/home/keith/HamJacobi/meshsize_smoothed.txt");
+    for(std::size_t i=0; i<ffun_s.size(); i++)
+        myfile << ffun_s[i] << std::endl;
+    myfile.close();
 
-//    return 0;
-//}
+    return 0;
+}
 
