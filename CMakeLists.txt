@@ -1,0 +1,5 @@
+cmake_minimum_required (VERSION 2.6)
+project (HamJacobi)
+set (CMAKE_CXX_STANDARD 11)
+set( CMAKE_CXX_FLAGS "-g -fbounds-check")
+add_executable(FastHJ.x FastHJ.cpp)
