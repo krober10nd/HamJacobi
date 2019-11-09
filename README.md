@@ -4,7 +4,7 @@ Solves a Hamilton-Jacobi PDE fast (in seconds) to gradient limit a scalar field 
 
 
 <p align="center">
-  <img src = "example_hj.png"> &nbsp &nbsp &nbsp &nbsp
+  <img src = "exampl_hj.png"> &nbsp &nbsp &nbsp &nbsp
 </p>
 
 
