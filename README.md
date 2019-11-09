@@ -2,6 +2,13 @@
 
 Solves a Hamilton-Jacobi PDE fast (in seconds) to gradient limit a scalar field defined in 2D or 3D. The input to the solver is packed in column-major order with z being the slowest varying dimension. 
 
+
+<p align="center">
+  <img src = "example_hj.png"> &nbsp &nbsp &nbsp &nbsp
+</p>
+
+
+
 ## Compile
 
 This code is designed to be mex'ed using https://github.com/audiofilter/mex-it. From MATLAB enter the following command: 
