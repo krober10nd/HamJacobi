@@ -19,7 +19,7 @@ LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 matlab
 Operate this code from MATLAB by changing the appropriate parts of the code below.
 
 ```
-dims = [nrows ncols nz]; 
+dims = [nrows ncols nz]; % note: nz MUST be 1 for 2D fields.  
 elen = % size of grid cell 
 dfdx = % decimal fraction representing smoothness
 itmax = % maximum number of iterations to perform 
@@ -30,14 +30,14 @@ smoothed_field = FastHJ( int32(dims), elen, dfdx, int32(itmax), field);
 Column-major in MATLAB is readily achieved by using the reshape command like so: 
 
 ```
-[nrows,ncols]=size(matrix);
-vec = reshape(matrix,[numel(matrix),1]); 
+[nrows,ncols,nz]=size(matrix);
+vec = matrix(:); 
 ```
 
 ...and back to the original matrix format like: 
 
 ```
 
-matrix = reshape(vec,[nrows,ncols]); 
+matrix = reshape(vec,[nrows,ncols,nz]); 
 ```
 
