@@ -17,6 +17,7 @@
 
 #define EPS 1e-9
 
+
 // for column major order with 1-based indexing
 int sub2ind(const int row, const int col, const int zpos, const int nrows,
             const int ncols) {
@@ -55,8 +56,14 @@ std::vector<int> findIndices(const std::vector<int> &A, const int value) {
 
 // solve the Hamilton-Jacobi equation
 std::vector<double> limgrad(const std::vector<int> &dims, const double &elen,
-                            const double &dfdx, const int &imax,
+                            const double &dfdx, const int &imax, const int &preserve_min,
                             const std::vector<double> &ffun) {
+
+  if ( preserve_min ) {
+    std::cout << "PRESERVING MINIMUMS" << std::endl;
+  }  else{
+    std::cout << "PRESERVING MAXIMUMS" << std::endl;
+  }
 
   assert(dims[0] > 0 && dims[1] > 0 && dims[2] > 0);
 
@@ -126,21 +133,44 @@ std::vector<double> limgrad(const std::vector<int> &dims, const double &elen,
         assert(nod2 > -1);
 
         //----------------- calc. limits about min.-value
-        if (ffun_s[nod1] > ffun_s[nod2]) {
+        if (preserve_min) {
+            if (ffun_s[nod1] > ffun_s[nod2]) {
 
-          double fun1 = ffun_s[nod2] + elen * dfdx;
-          if (ffun_s[nod1] > fun1 + ftol) {
-            ffun_s[nod1] = fun1;
-            aset[nod1] = iter;
-          }
+              double fun1 = ffun_s[nod2] + elen * dfdx;
+              if (ffun_s[nod1] > fun1 + ftol) {
+                ffun_s[nod1] = fun1;
+                aset[nod1] = iter;
+              }
 
+            } else {
+
+              double fun2 = ffun_s[nod1] + elen * dfdx;
+              if (ffun_s[nod2] > fun2 + ftol) {
+                ffun_s[nod2] = fun2;
+                aset[nod2] = iter;
+              }
+            }
+        //----------------- calc. limits about max.-value
         } else {
+            // nod1 has a higher value than nod2, raise nod2 a little
+            if (ffun_s[nod1] > ffun_s[nod2]) {
 
-          double fun2 = ffun_s[nod1] + elen * dfdx;
-          if (ffun_s[nod2] > fun2 + ftol) {
-            ffun_s[nod2] = fun2;
-            aset[nod2] = iter;
-          }
+              // create a new nod2 value = to subtracting a little off nod1
+              double fun2 = ffun_s[nod1] - elen * dfdx;
+              if (ffun_s[nod2] < fun2 - ftol) {
+                ffun_s[nod2] = fun2;
+                aset[nod2] = iter;
+              }
+
+            } else {
+
+                // nod2 has a higher value than nod1, raise nod1 a little
+              double fun1 = ffun_s[nod2] - elen * dfdx;
+              if (ffun_s[nod1] < fun1 - ftol) {
+                ffun_s[nod1] = fun1;
+                aset[nod1] = iter;
+              }
+            }
         }
       }
     }
@@ -153,48 +183,12 @@ std::vector<double> limgrad(const std::vector<int> &dims, const double &elen,
 // first args are inputs, last arg is output
 void mex_function(const std::vector<int> &dims, const double &elen,
                   const double &dfdx, const int &imax,
+                  const int &preserve_min,
                   const std::vector<double> &ffun,
                   std::vector<double> &ffun_s) {
 
   // this is how you call the function from matlab
-  ffun_s = limgrad(dims, elen, dfdx, imax, ffun);
+  ffun_s = limgrad(dims, elen, dfdx, imax, preserve_min, ffun);
 }
 
 #include "mex-it.h"
-
-//
-// int main() {
-//    std::vector<int> dims = {81,41,41};
-//    double elen = 0.05;
-//    double dfdx=0.15;
-
-//    std::vector<double> ffun;
-
-//    std::ifstream meshSizes;
-//    meshSizes.open("/home/keith/HamJacobi/meshsize.txt");
-//    double d;
-//    while (meshSizes >> d) //ifstream does text->double conversion
-//       ffun.push_back(d); // add to vector
-//    meshSizes.close();
-//    std::cout << "read it in" << std::endl;
-
-//    int imax=std::sqrt(ffun.size());
-
-//    auto begin = std::chrono::steady_clock::now();
-
-//    std::vector<double> ffun_s = limgrad( dims, elen, dfdx, imax, ffun);
-
-//    auto end = std::chrono::steady_clock::now();
-
-//    std::cout << "Method took " <<
-//    std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()
-//    << " microseconds\n";
-
-//    std::ofstream myfile;
-//    myfile.open ("/home/keith/HamJacobi/meshsize_smoothed.txt");
-//    for(std::size_t i=0; i<ffun_s.size(); i++)
-//        myfile << ffun_s[i] << std::endl;
-//    myfile.close();
-
-//    return 0;
-//}
