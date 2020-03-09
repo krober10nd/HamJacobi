@@ -2,7 +2,7 @@
 
 Solves a Hamilton-Jacobi PDE fast (in seconds) to gradient limit a scalar field defined in 2D or 3D. The input to the solver is packed in column-major order with z being the slowest varying dimension. 
 
-## Compile
+## Compile for MATLAB
 
 This code is designed to be mex'ed using https://github.com/audiofilter/mex-it. From MATLAB enter the following command: 
 
@@ -14,7 +14,21 @@ LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 matlab
 
 ...but first try to just use MATLAB without that.
 
-## Usage 
+## Compile for Python3 
+
+This code can be called from Python3.x using pybind11 (pip3 install pybind11). Compile the cpp source code as a shared library as such...
+c++ -O3 -Wall -shared -std=c++11 -fPIC `python3 -m pybind11 --includes` FastHJ.cpp -o FastHJ`python3-config --extension-suffix`
+
+# Usage in Python
+
+In python...
+
+import FastHJ 
+gradlimited = FastHJ.gradlim(...) 
+
+Type help(FastHJ) to see how to call it.
+
+## Usage in MATLAB
 
 Operate this code from MATLAB by changing the appropriate parts of the code below.
 
