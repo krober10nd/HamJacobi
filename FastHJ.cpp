@@ -2,6 +2,8 @@
    Persson, PO. Engineering with Computers (2006) 22: 95.
    https://doi.org/10.1007/s00366-006-0014-1 kjr, usp, 2019
 */
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 #include <algorithm>
 #include <array>
@@ -88,7 +90,7 @@ std::vector<double> limgrad(const std::vector<int> &dims, const double &elen,
     for (std::size_t i = 0; i < aidx.size(); i++) {
 
       //----- map triply indexed to singly indexed
-      int inod = aidx[i] + 1; // add one to match 1-based indexing
+      int inod = aidx[i]  + 1; // add one to match 1-based indexing
 
       //----- calculate the i,j,k position
       int ipos, jpos, kpos;
@@ -149,18 +151,26 @@ std::vector<double> limgrad(const std::vector<int> &dims, const double &elen,
   return ffun_s;
 }
 
-// mex it up for usage in matlab
-// first args are inputs, last arg is output
-void mex_function(const std::vector<int> &dims, const double &elen,
-                  const double &dfdx, const int &imax,
-                  const std::vector<double> &ffun,
-                  std::vector<double> &ffun_s) {
+PYBIND11_MODULE(FastHJ, m) {
 
-  // this is how you call the function from matlab
-  ffun_s = limgrad(dims, elen, dfdx, imax, ffun);
+    m.doc() = "pybind11 module for gradient limiting a scalar field";
+
+    m.def("limgrad", &limgrad,
+      "The function which gradient limits a scalar field reshaped to a vector.");
 }
 
-#include "mex-it.h"
+// mex it up for usage in matlab
+// first args are inputs, last arg is output
+//void mex_function(const std::vector<int> &dims, const double &elen,
+//                  const double &dfdx, const int &imax,
+//                  const std::vector<double> &ffun,
+//                  std::vector<double> &ffun_s) {
+//
+//  // this is how you call the function from matlab
+//  ffun_s = limgrad(dims, elen, dfdx, imax, ffun);
+//}
+
+//#include "mex-it.h"
 
 //
 // int main() {
